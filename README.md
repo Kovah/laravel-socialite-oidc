@@ -4,6 +4,10 @@
 
 ## Installation & Basic Usage
 
+```bash
+composer require kovah/laravel-socialite-oidc
+```
+
 Please see the [Base Installation Guide](https://socialiteproviders.com/usage/), then follow the provider specific instructions below.
 
 ### Add configuration to `config/services.php`
@@ -30,7 +34,7 @@ In Laravel 11, the default `EventServiceProvider` provider was removed. Instead,
 
 ```php
 Event::listen(function (\SocialiteProviders\Manager\SocialiteWasCalled $event) {
-    $event->extendSocialite('auth0', \SocialiteProviders\Auth0\Provider::class);
+    $event->extendSocialite('oidc', \SocialiteProviders\OIDC\Provider::class);
 });
 ```
 
