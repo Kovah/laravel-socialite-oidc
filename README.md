@@ -4,6 +4,10 @@
 
 ## Installation & Basic Usage
 
+```bash
+composer require kovah/laravel-socialite-oidc
+```
+
 Please see the [Base Installation Guide](https://socialiteproviders.com/usage/), then follow the provider specific instructions below.
 
 ### Add configuration to `config/services.php`
