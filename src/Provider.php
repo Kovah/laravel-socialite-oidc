@@ -356,6 +356,7 @@ class Provider extends AbstractProvider
             ]),
             [
                 RequestOptions::HEADERS => [
+                    'Authorization' => 'Bearer ' . $token,
                     'Accept' => 'application/json',
                 ],
             ]
