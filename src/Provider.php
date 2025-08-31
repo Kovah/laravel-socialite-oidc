@@ -3,10 +3,14 @@
 namespace SocialiteProviders\OIDC;
 
 use Exception;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Firebase\JWT\JWK;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 use JsonException;
 use SocialiteProviders\Manager\OAuth2\AbstractProvider;
 use SocialiteProviders\Manager\OAuth2\User;
@@ -56,6 +60,14 @@ class Provider extends AbstractProvider
     protected bool $usesNonce = true;
 
     /**
+     * Indicates if JWT signature verification should be enabled.
+     * Can be overridden by config 'verify_jwt'.
+     *
+     * @var bool
+     */
+    protected bool $verifyJwt = false;
+
+    /**
      * {@inheritdoc}
      */
     public static function additionalConfigKeys()
@@ -63,6 +75,8 @@ class Provider extends AbstractProvider
         return [
             'base_url',
             'scopes',
+            'verify_jwt',
+            'jwt_public_key',
         ];
     }
 
@@ -189,6 +203,16 @@ class Provider extends AbstractProvider
     }
 
     /**
+     * Determine if JWT signature verification is enabled.
+     *
+     * @return bool
+     */
+    protected function shouldVerifyJwt()
+    {
+        return $this->getConfig('verify_jwt', $this->verifyJwt);
+    }
+
+    /**
      * Get the current string used for nonce.
      *
      * @return string
@@ -223,6 +247,32 @@ class Provider extends AbstractProvider
         }
 
         return $this->configurations;
+    }
+
+    /**
+     * Get JWKS (JSON Web Key Set) from the OIDC provider
+     *
+     * @return array
+     * @throws GuzzleException
+     */
+    protected function getJwks()
+    {
+        $cacheKey = 'oidc_jwks_' . md5($this->getConfig('base_url'));
+        
+        return Cache::remember($cacheKey, 3600, function () {
+            $config = $this->getOpenIdConfig();
+            
+            if (!isset($config['jwks_uri'])) {
+                throw new JwtVerificationException('JWKS URI not found in OIDC configuration');
+            }
+            
+            try {
+                $response = $this->getHttpClient()->get($config['jwks_uri']);
+                return json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+            } catch (Exception $e) {
+                throw new JwtVerificationException('Unable to fetch JWKS: ' . $e->getMessage());
+            }
+        });
     }
 
     /**
@@ -264,6 +314,11 @@ class Provider extends AbstractProvider
 
     protected function decodeJWT($jwt, $code)
     {
+        if ($this->shouldVerifyJwt()) {
+            return $this->verifyAndDecodeJWT($jwt);
+        }
+        
+        // Fallback to original behavior for backward compatibility
         try {
             [$jwt_header, $jwt_payload, $jwt_signature] = explode(".", $jwt);
             $payload = json_decode($this->base64url_decode($jwt_payload));
@@ -276,6 +331,49 @@ class Provider extends AbstractProvider
         }
 
         return $payload;
+    }
+
+    /**
+     * Verify JWT signature and decode the token
+     *
+     * @param string $jwt
+     * @return object
+     * @throws JwtVerificationException
+     */
+    protected function verifyAndDecodeJWT($jwt)
+    {
+        try {
+            // Check if a specific public key is provided in config
+            $publicKey = $this->getConfig('jwt_public_key');
+            
+            if ($publicKey) {
+                // Use provided public key
+                $decoded = JWT::decode($jwt, new Key($publicKey, 'RS256'));
+            } else {
+                // Fetch JWKS and verify using key set
+                $jwks = $this->getJwks();
+                $keySet = JWK::parseKeySet($jwks);
+                $decoded = JWT::decode($jwt, $keySet);
+            }
+
+            // Convert to object format for compatibility
+            $payload = json_decode(json_encode($decoded));
+
+            if ($this->isInvalidNonce($payload->nonce)) {
+                throw new InvalidNonceException('JWT: Contains an invalid nonce.', 401);
+            }
+
+            return $payload;
+            
+        } catch (\Firebase\JWT\ExpiredException $e) {
+            throw new JwtVerificationException('JWT: Token has expired.', 401);
+        } catch (\Firebase\JWT\SignatureInvalidException $e) {
+            throw new JwtVerificationException('JWT: Invalid signature.', 401);
+        } catch (\Firebase\JWT\InvalidTokenException $e) {
+            throw new JwtVerificationException('JWT: Invalid token format.', 401);
+        } catch (Exception $e) {
+            throw new JwtVerificationException('JWT: Verification failed - ' . $e->getMessage(), 401);
+        }
     }
 
     private function base64url_decode($data)

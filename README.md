@@ -18,11 +18,49 @@ Please see the [Base Installation Guide](https://socialiteproviders.com/usage/),
     'client_id' => env('OIDC_CLIENT_ID'),
     'client_secret' => env('OIDC_CLIENT_SECRET'),
     'redirect' => env('OIDC_REDIRECT_URI'),
+    
+    // Optional: Enable JWT signature verification (default: false)
+    'verify_jwt' => env('OIDC_VERIFY_JWT', false),
+    
+    // Optional: Provide a specific public key for JWT verification
+    // If not provided, the key will be fetched from the OIDC provider's JWKS endpoint
+    'jwt_public_key' => env('OIDC_JWT_PUBLIC_KEY'),
 ],
 ```
 
 The base URL must be set to the URL of your OIDC endpoint excluding the `.well-known/openid-configuration` part. For example:
 If `https://auth.company.com/application/linkace/.well-known/openid-configuration` is your OIDC configuration URL, then `https://auth.company.com/application/linkace` must be your base URL.
+
+### JWT Signature Verification
+
+By default, this package does not verify the JWT signature of the `id_token`. According to the OpenID Connect specification, signature verification is not required when TLS is used and the token is transmitted directly from the authorization server to the client.
+
+However, for enhanced security, you can enable JWT signature verification by setting `verify_jwt` to `true` in your configuration:
+
+```php
+'oidc' => [
+    // ... other configuration
+    'verify_jwt' => true,
+],
+```
+
+When JWT verification is enabled:
+
+1. **Automatic JWKS fetching**: The provider will automatically fetch the JSON Web Key Set (JWKS) from your OIDC provider's `.well-known/openid-configuration` endpoint
+2. **Caching**: JWKS data is cached for 1 hour to improve performance
+3. **Custom public key**: Alternatively, you can provide a specific public key using the `jwt_public_key` option
+
+**Example with custom public key:**
+
+```php
+'oidc' => [
+    // ... other configuration
+    'verify_jwt' => true,
+    'jwt_public_key' => '-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+-----END PUBLIC KEY-----',
+],
+```
 
 ### Add provider event listener
 
