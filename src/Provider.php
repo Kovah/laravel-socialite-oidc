@@ -271,8 +271,13 @@ class Provider extends AbstractProvider
             throw new InvalidTokenException('JWT: Failed to parse.', 401);
         }
 
-        if ($this->isInvalidNonce($payload->nonce)) {
+        if ($this->isInvalidNonce($payload->nonce ?? null)) {
             throw new InvalidNonceException('JWT: Contains an invalid nonce.', 401);
+        }
+
+        // Clear nonce from session after successful validation to prevent replay attacks
+        if ($this->usesNonce()) {
+            $this->request->session()->forget('nonce');
         }
 
         return $payload;
