@@ -289,12 +289,12 @@ class Provider extends AbstractProvider
             throw new InvalidStateException("Callback: invalid state.", 401);
         }
 
-        $tokenResponse = $this->getAccessTokenResponse($this->request->get('code'));
+        $tokenResponse = $this->getAccessTokenResponse($this->request->input('code'));
 
         // Decrypt JWT token
         $payload = $this->decodeJWT(
             $tokenResponse['id_token'],
-            $this->request->get('code')
+            $this->request->input('code')
         );
 
         if ($this->hasEmptyEmail($payload)) {
