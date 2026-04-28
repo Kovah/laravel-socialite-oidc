@@ -105,18 +105,6 @@ class Provider extends AbstractProvider
     /**
      * {@inheritdoc}
      */
-    public function getScopes(): array
-    {
-        if ($this->getConfig('scopes')) {
-            return array_merge($this->scopes, explode(' ', $this->getConfig('scopes')));
-        }
-
-        return $this->scopes;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     protected function getTokenUrl()
     {
         return $this->getOpenIdConfig()['token_endpoint'];
