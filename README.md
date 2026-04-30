@@ -124,9 +124,9 @@ You may extend the default scopes (`openid email profile`) by adding a `scopes` 
     'client_secret' => env('OIDC_CLIENT_SECRET'),
     'redirect' => env('OIDC_REDIRECT_URI'),
     
-    'scopes' => 'groups roles',
+    'scopes' => ['groups', 'roles'],
     // or
-    'scopes' => env('OIDC_SCOPES'),
+    'scopes' => explode(' ', env('OIDC_SCOPES')),
 ],
 ```
 
