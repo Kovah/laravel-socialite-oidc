@@ -422,12 +422,11 @@ class Provider extends AbstractProvider
     protected function getUserByToken($token)
     {
         $response = $this->getHttpClient()->get(
-            $this->getUserInfoUrl() . '?' . http_build_query([
-                'access_token' => $token,
-            ]),
+            $this->getUserInfoUrl(),
             [
                 RequestOptions::HEADERS => [
                     'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
                 ],
             ]
         );
