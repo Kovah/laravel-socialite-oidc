@@ -285,14 +285,6 @@ class Provider extends AbstractProvider
             $this->request->input('code')
         );
 
-        if ($this->hasEmptyEmail($payload)) {
-            $payload = $this->getUserByToken($tokenResponse['access_token']);
-            $email = $payload['email'] ?? null;
-            if (! $email) {
-                throw new EmptyEmailException('JWT: User has no email.', 401);
-            }
-        }
-
         $this->user = $this->mapUserToObject((array)$payload);
 
         return $this->user->setToken($tokenResponse['access_token'])
@@ -387,11 +379,6 @@ class Provider extends AbstractProvider
         }
 
         return !(strlen($nonce) > 0 && $nonce === $this->getCurrentNonce());
-    }
-
-    protected function hasEmptyEmail($payload)
-    {
-        return !isset($payload->email) || strlen($payload->email) == 0;
     }
 
     /**
