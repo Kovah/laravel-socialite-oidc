@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use JsonException;
 use SocialiteProviders\Manager\OAuth2\AbstractProvider;
 use SocialiteProviders\Manager\OAuth2\User;
+use Illuminate\Support\Arr;
 
 /**
  * Generic OpenID Connect provider for Laravel Socialite
@@ -388,17 +389,9 @@ class Provider extends AbstractProvider
     {
         return (new User())->setRaw($user)->map(
             [
-                'id' => $user['sub'],
-
-                'email' => $user['email'] ?? null,
-                'name' => $user['name'] ?? null,
-                'nickname' => $user['nickname'] ?? null,
-                'given_name' => $user['given_name'] ?? null,
-                'family_name' => $user['family_name'] ?? null,
-
-                'idp' => $user['idp'] ?? null,
-                'role' => $user['role'] ?? null,
-                'groups' => $user['groups'] ?? null,
+                ...$user,
+                'id' => Arr::get($user, 'sub'),
+                'avatar' => Arr::get($user, 'picture'),
             ]
         );
     }
