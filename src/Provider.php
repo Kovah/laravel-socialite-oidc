@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use JsonException;
 use SocialiteProviders\Manager\OAuth2\AbstractProvider;
 use SocialiteProviders\Manager\OAuth2\User;
+use Illuminate\Support\Arr;
 
 /**
  * Generic OpenID Connect provider for Laravel Socialite
@@ -285,14 +286,6 @@ class Provider extends AbstractProvider
             $this->request->input('code')
         );
 
-        if ($this->hasEmptyEmail($payload)) {
-            $payload = $this->getUserByToken($tokenResponse['access_token']);
-            $email = $payload['email'] ?? null;
-            if (! $email) {
-                throw new EmptyEmailException('JWT: User has no email.', 401);
-            }
-        }
-
         $this->user = $this->mapUserToObject((array)$payload);
 
         return $this->user->setToken($tokenResponse['access_token'])
@@ -389,11 +382,6 @@ class Provider extends AbstractProvider
         return !(strlen($nonce) > 0 && $nonce === $this->getCurrentNonce());
     }
 
-    protected function hasEmptyEmail($payload)
-    {
-        return !isset($payload->email) || strlen($payload->email) == 0;
-    }
-
     /**
      * {@inheritdoc}
      */
@@ -401,17 +389,9 @@ class Provider extends AbstractProvider
     {
         return (new User())->setRaw($user)->map(
             [
+                ...$user,
                 'id' => $user['sub'],
-
-                'email' => $user['email'] ?? null,
-                'name' => $user['name'] ?? null,
-                'nickname' => $user['nickname'] ?? null,
-                'given_name' => $user['given_name'] ?? null,
-                'family_name' => $user['family_name'] ?? null,
-
-                'idp' => $user['idp'] ?? null,
-                'role' => $user['role'] ?? null,
-                'groups' => $user['groups'] ?? null,
+                'avatar' => $user['picture'] ?? null,
             ]
         );
     }
@@ -442,12 +422,11 @@ class Provider extends AbstractProvider
     protected function getUserByToken($token)
     {
         $response = $this->getHttpClient()->get(
-            $this->getUserInfoUrl() . '?' . http_build_query([
-                'access_token' => $token,
-            ]),
+            $this->getUserInfoUrl(),
             [
                 RequestOptions::HEADERS => [
                     'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
                 ],
             ]
         );
